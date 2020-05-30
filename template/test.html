@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<script>
+    function mapToStr(map) {
+        let str = '{';
+        let i = 0;
+        for(let x of map){
+            i++;
+            if(getMapLength(map)===i){
+                str += x[0]+':'+x[1];
+            }else {
+                str += x[0]+':'+x[1]+',';
+            }
+        }
+        str += '}';
+        return str;
+    }
+    function getMapLength(map){
+        let count = 0;
+        for(let i of map){
+       　　count++;
+    　　}
+    　　return count;　　
+    }
+    function strToMap(str) {
+        let map = new Map();
+        let array = new Array();
+        array = str.replace('{','').replace('}','').split(',');
+        for(let i=0;i<array.length;i++){
+            map.set(array[i].split(':')[0], array[i].split(':')[1])
+        }
+        return map
+    }
+    let str = '{1:q,2:a,3:z}';
+    strToMap(str)
+    // let map = new Map();
+    // map.set(1,2)
+    // map.set(2,2)
+    // console.log(mapToStr(map))
+    // console.log(getMapLength(map));
+</script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+  <script src="{% static 'my.js' %}"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.bootcdn.net/ajax/libs/vue/2.6.11/vue.js"></script>
+  <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.5.1/jquery.js"></script>
+</head>
+<body background="{% static 'bg.jpg' %}">
+{% csrf_token %}
+{% verbatim %}
+<div id="Todo" style="text-align: center">
+  <section>
+    <input v-model="newMsg" v-on:keyup.enter="addMsg" />
+    <br/>
+    <ul style="list-style-type: none">
+      <li v-for="(value,name) in swapMap">
+        <input type="checkbox" v-on:click="addCompleted(value[0])" />
+        <span>[{{name+1}}]</span>
+        <label>{{value[1]}}</label>
+        <button v-on:click="removeMsg(value[0])" type="button">删除</button>
+      </li>
+    </ul>
+    <footer >
+      <span><strong>{{msgMapLength()}}</strong>记录</span>
+      <ul style="list-style-type: none;">
+        <li><button type="button" v-on:click="msgAll()" >所有</button> </li>
+        <li><button type="button" v-on:click="msgActivate()" >活动</button> </li>
+        <li><button type="button" v-on:click="msgCompleted()" >完成</button> </li>
+        <li><button type="button" v-on:click="clear()" >清空</button> </li>
+      </ul>
+    </footer>
+
+  </section>
+
+</div>
+{% endverbatim %}
+<script>
+  const vue = new Vue({
+    el: '#Todo',
+    data: {
+      newMsg: '',
+      msgList: [],
+      swapMap: new Map(),
+      msgMap: new Map(),
+      activateMap: new Map(),
+      completedMap:new Map(),
+      isGetSucessful: false,
+      i: 1,
+    },
+    mounted: function(){
+      this.getJson();
+    },
+    methods: {
+      getJson:function(){
+        let that = this;
+        axios
+        .get('/getjson')
+        .then(function (response) {
+          let data = response['data'];
+          let strMsgMap = data['msgMap'];
+          let strActivateMap = data['activateMap'];
+          let strCompletedMap = data['completedMap'];
+          if(strMsgMap!=='False'){
+            that.msgMap = strToMap(data['msgMap']);
+            that.swapMap = that.msgMap;
+            that.i = getMapLength(that.msgMap);
+            that.isGetSucessful = true;
+          }
+          if (strActivateMap!=='False'){
+            that.activateMap = strToMap(data['activateMap']);
+          }
+          if(strCompletedMap!=='False'){
+            that.completedMap = strToMap(data['completedMap']);
+          }
+        })
+        .catch(function (error) { // 请求失败处理
+          console.log(error);
+        });
+        console.log('GETJSON');
+      },
+      setJson:function(){
+        let strMsgMap='',strActivateMap='',strCompletedMap='';
+        if(getMapLength(this.msgMap)===0){
+          strMsgMap = 'False';
+        }else {
+          strMsgMap = mapToStr(this.msgMap);
+        }
+        if(getMapLength(this.activateMap)===0){
+          strActivateMap = 'False';
+        }else{
+          strActivateMap = mapToStr(this.activateMap);
+        }
+        if(getMapLength(this.completedMap)===0){
+          strCompletedMap = 'False';
+        }else{
+          strCompletedMap = mapToStr(this.completedMap);
+        }
+        $.post("/setjson",{
+		   "csrfmiddlewaretoken": $("input[name='csrfmiddlewaretoken']").val(),
+           'msgMap': strMsgMap,
+           'activateMap': strActivateMap,
+           'completedMap': strCompletedMap,
+	    },function(data,status){
+          console.log(data)
+        });
+      },
+      msgMapLength: function () {
+        // if(this.isGetSucessful){
+        //   this.setJson();
+        // }
+        return mapToList([], this.msgMap).length;
+      },
+      addMsg: function () {
+        if(this.newMsg===''){
+          console.log("输入为空")
+        }else {
+          this.msgMap.set(this.i++,this.newMsg);
+          this.swapMap = this.msgMap;
+          this.newMsg = "";
+          this.msgList = [];
+        }
+      },
+      removeMsg: function (index) {
+        this.swapMap.delete(index);
+        this.msgMap.delete(index);
+        this.msgList = [];
+        console.log(this.swapMap)
+      },
+      addCompleted:function(index){
+        this.completedMap.set(index, this.msgMap.get(index));
+      },
+      msgCompleted:function(){
+        this.swapMap = this.completedMap;
+        this.msgList = [];
+      },
+      msgActivate:function(){
+        for(let key of this.msgMap){
+          for(let x of this.completedMap){
+            if(key[0]===x[0]&&(this.msgMap.get(key[0])===this.completedMap.get(x[0]))){
+              try{
+                this.activateMap.delete(key[0])
+              }catch (e) {
+                console.log(e)
+              }
+              break;
+            }else {
+              this.activateMap.set(key[0],key[1]);
+            }
+          }
+        }
+        console.log('activateMap:',this.activateMap);
+        this.swapMap = this.activateMap;
+        this.msgList = [];
+      },
+      msgAll:function(){
+        this.swapMap = this.msgMap;
+        this.msgList = [];
+      },
+      clear: function () {
+        this.swapMap = {};
+        this.completedMap.clear();
+        this.activateMap.clear();
+        this.msgMap.clear();
+        this.msgList = [];
+      }
+    }
+  });
+</script>
+</body>
+</html>

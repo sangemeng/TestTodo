@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+  <script src="{% static 'my.js' %}"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.bootcdn.net/ajax/libs/vue/2.6.11/vue.js"></script>
+  <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.5.1/jquery.js"></script>
+</head>
+<body background="{% static 'bg.jpg' %}">
+{% csrf_token %}
+{% verbatim %}
+<div id="Todo" style="text-align: center">
+  {{msgJson}}
+  <section>
+    <input v-model="newMsg" v-on:keyup.enter="addMsg()" />
+    <br/>
+    <ul style="list-style-type: none">
+      <li v-for="(value,key, index) in swapJson">
+        <input type="checkbox" v-on:click="addCompleted(key)" />
+        <span>[{{index+1}}]</span>
+        <label>{{value.todo}}</label>
+        <button v-on:click="removeMsg(key)" type="button">删除</button>
+      </li>
+    </ul>
+    <footer >
+      <span><strong>{{msgJsonLength()}}</strong>记录</span>
+      <ul style="list-style-type: none;">
+        <li><button type="button" v-on:click="msgAll()" >所有</button> </li>
+        <li><button type="button" v-on:click="activate()" >活动</button> </li>
+        <li><button type="button" v-on:click="completed()" >完成</button> </li>
+        <li><button type="button" v-on:click="clear()" >清空</button> </li>
+      </ul>
+    </footer>
+
+  </section>
+
+</div>
+{% endverbatim %}
+<script>
+  const vue = new Vue({
+    el: '#Todo',
+    data: {
+      newMsg: '',
+      msgList: [],
+      swapJson: {},
+      msgJson: {},
+      isGetSucessful: false,
+      id: 0,
+    },
+    mounted: function(){
+      this.getJson();
+    },
+    methods: {
+      getJson:function(){
+        let that = this;
+        axios
+        .get('/getjson')
+        .then(function (response) {
+          let msgObj = JSON.parse(response.data['msgMap']);
+          that.msgJson = msgObj;
+          that.swapJson = that.msgJson;
+          if(response.data['msgMap']==='{}'){
+            that.id = 0;
+          }else {
+            that.id = parseInt(Object.keys(getJsonLast(that.msgJson))[0]);
+          }
+          that.isGetSucessful = true;
+        })
+        .catch(function (error) { // 请求失败处理
+          console.log(error);
+        });
+        console.log('GETJSON');
+      },
+      setJson:function(){
+        $.post("/setjson",{
+		   "csrfmiddlewaretoken": $("input[name='csrfmiddlewaretoken']").val(),
+          'msgMap': JSON.stringify(this.msgJson),
+	    },function(data,status){
+          console.log(data);
+        });
+      },
+      msgJsonLength:function(){
+        if(this.isGetSucessful){
+          console.log('setjson');
+          console.log(this.msgJson)
+          this.setJson();
+        }
+        // this.setJson();
+        return Object.keys(this.msgJson).length
+      },
+      addMsg:function(){
+        this.id = this.id + 1
+        this.msgJson[this.id] = {
+            'todo': this.newMsg,
+            'ac': true,
+            'com': false,
+        }
+        this.newMsg = '';
+      },
+      removeMsg:function (id) {
+        Vue.set(this.msgJson[id], true);
+        console.log(this.msgJson[id])
+        delete this.msgJson[id];
+        this.swapMap = {};
+        this.swapMap = this.msgJson;
+      },
+      addCompleted: function(id){
+        for(let k in this.msgJson){
+          if(parseInt(k) === parseInt(id)){
+            this.msgJson[k]['com'] = true;
+            this.msgJson[k]['ac'] = false;
+          }
+        }
+      },
+      msgAll: function(){
+        this.swapJson = {};
+        this.swapJson = this.msgJson;
+      },
+      activate: function () {
+        this.swapJson = {};
+        for(let k in this.msgJson){
+          if(this.msgJson[k]['ac']===true){
+            this.swapJson[k]=this.msgJson[k];
+          }
+        }
+      },
+      completed: function () {
+        this.swapJson = {};
+        console.log(this.msgJson)
+        for(let k in this.msgJson){
+          if(this.msgJson[k]['com']===true){
+            this.swapJson[k]=this.msgJson[k];
+          }
+          // console.log(Object.keys(this.msgJson).length)
+        }
+      },
+      clear:function () {
+        this.msgJson = {};
+      }
+    }
+  });
+</script>
+</body>
+</html>
